@@ -7,9 +7,9 @@ It features a beautiful glassmorphism UI, dark/light theme toggle, task manageme
 
 ## 🌐 Live Demo
 
-👉 [**Try it here**](https://your-username.github.io/todo-list-app/)  
+👉 [**Try it here**](https://nitesh-shaw-098.github.io/to-do-list-app/)  
 
-*(Replace `your-username` with your GitHub username after pushing the repo.)*
+*(Replace `nitesh-shaw-098` with your GitHub username after pushing the repo.)*
 
 ---
 
