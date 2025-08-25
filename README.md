@@ -9,8 +9,6 @@ It features a beautiful glassmorphism UI, dark/light theme toggle, task manageme
 
 👉 [**Try it here**](https://nitesh-shaw-098.github.io/to-do-list-app/)  
 
-*(Replace `nitesh-shaw-098` with your GitHub username after pushing the repo.)*
-
 ---
 
 ## ✨ Features
@@ -33,5 +31,5 @@ It features a beautiful glassmorphism UI, dark/light theme toggle, task manageme
 
 ### 1. Clone the repo
 ```bash
-git clone https://github.com/your-username/todo-list-app.git
+git clone https://github.com/nitesh-shaw-098/todo-list-app.git
 cd todo-list-app
