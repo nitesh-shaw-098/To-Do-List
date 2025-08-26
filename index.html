@@ -26,7 +26,7 @@
     body { font-family: 'Inter', sans-serif; background: rgb(var(--background)); color: rgb(var(--text)); min-height: 100vh; overflow-x: hidden; }
     .glass { background: rgba(var(--surface), 0.6); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid rgba(var(--primary), 0.1); }
     .glass-light { background: rgba(255,255,255,.8); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid rgba(0,0,0,.05); }
-    .title-font { font-family: 'Space Grotesk', sans-serif; }
+    .title-font { font-family: 'Space Grotesk', sans-serif;  white-space: nowrap;     /* prevents breaking */font-size: 1.5rem;       /* adjust size for mobile */text-align: center;display: block;width: 100%;}
     .glow-hover:hover { box-shadow: 0 0 15px rgba(var(--primary), .3); }
     .task-card { transition: all .2s ease; }
     .task-card:hover { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(0,0,0,.1); }
@@ -59,10 +59,12 @@
   <div class="container mx-auto px-4 py-6 max-w-6xl">
     <header class="flex justify-between items-center mb-8">
       <div class="flex items-center">
-        <button id="sidebar-toggle" class="mr-4 md:hidden" aria-label="Toggle sidebar">
+<!--     <button id="sidebar-toggle" class="mr-4 md:hidden" aria-label="Toggle sidebar">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
         </button>
-        <h1 class="title-font text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 to-purple-500">To-Do-List</h1>
+-->   
+
+        <h1 class="font-bold bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 to-purple-500 text-lg md:text-3xl">To-Do-List</h1>
       </div>
       <div class="flex items-center space-x-4">
         <div class="relative">
@@ -439,8 +441,8 @@
     // ====== Events ======
     function wireEvents(){
       // Sidebar mobile
-      //sidebarToggle?.addEventListener('click', ()=>{ sidebar.classList.toggle('open'); sidebarOverlay.classList.toggle('open'); });
-      //sidebarOverlay?.addEventListener('click', ()=>{ sidebar.classList.remove('open'); sidebarOverlay.classList.remove('open'); });
+//      sidebarToggle?.addEventListener('click', ()=>{ sidebar.classList.toggle('open'); sidebarOverlay.classList.toggle('open'); });
+//      sidebarOverlay?.addEventListener('click', ()=>{ sidebar.classList.remove('open'); sidebarOverlay.classList.remove('open'); });
 
       // Filters
       $$('.filter-btn').forEach(btn=>btn.addEventListener('click', ()=>{ state.filter.type = btn.dataset.filter; render(); }));
