@@ -439,8 +439,8 @@
     // ====== Events ======
     function wireEvents(){
       // Sidebar mobile
-      sidebarToggle?.addEventListener('click', ()=>{ sidebar.classList.toggle('open'); sidebarOverlay.classList.toggle('open'); });
-      sidebarOverlay?.addEventListener('click', ()=>{ sidebar.classList.remove('open'); sidebarOverlay.classList.remove('open'); });
+      //sidebarToggle?.addEventListener('click', ()=>{ sidebar.classList.toggle('open'); sidebarOverlay.classList.toggle('open'); });
+      //sidebarOverlay?.addEventListener('click', ()=>{ sidebar.classList.remove('open'); sidebarOverlay.classList.remove('open'); });
 
       // Filters
       $$('.filter-btn').forEach(btn=>btn.addEventListener('click', ()=>{ state.filter.type = btn.dataset.filter; render(); }));
