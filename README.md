@@ -80,7 +80,6 @@ todo-app/
 ## 👨‍💻 Author
 
 * Made with ❤️ by [Your Name](https://github.com/nitesh-shaw-098)
-
 ```
 
 
