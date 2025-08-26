@@ -1,6 +1,5 @@
 ## 📄 README.md
 
-````markdown
 # 📝 To-Do List App
 
 A simple yet powerful To-Do List web app with **reminders, notifications, recurring tasks, and import/export support**.  
@@ -31,9 +30,8 @@ Built with **HTML, TailwindCSS, and Vanilla JS**.
 
 ## 🛠 Installation (Run Locally)
 1. Clone the repo:
-   ```bash
+
    git clone https://github.com/nitesh-shaw-098/To-Do-List.git
-````
 
 2. Open the folder:
 
