@@ -675,6 +675,11 @@
         darkModeToggle.checked = false;
       }
     }
+// Front page theme toggle button
+const themeToggleBtn = document.getElementById('theme-toggle');
+themeToggleBtn?.addEventListener('click', () => {
+  toggleTheme();
+});
 
     function toggleGlassEffect(){
       const els = $$('.glass');
