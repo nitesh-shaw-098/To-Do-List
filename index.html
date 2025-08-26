@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>To‑Do List (Working)</title>
+  <title>To-Do List (Working)</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap">
   <style>
@@ -59,11 +59,6 @@
   <div class="container mx-auto px-4 py-6 max-w-6xl">
     <header class="flex justify-between items-center mb-8">
       <div class="flex items-center">
-<!--     <button id="sidebar-toggle" class="mr-4 md:hidden" aria-label="Toggle sidebar">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
-        </button>
--->   
-
         <h1 class="font-bold bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 to-purple-500 text-lg md:text-3xl">To-Do-List</h1>
       </div>
       <div class="flex items-center space-x-4">
@@ -205,6 +200,18 @@
             <button type="button" class="tag text-xs px-3 py-1 bg-red-500/20 text-red-400 rounded-full">Urgent</button>
           </div>
         </div>
+
+        <!-- Recurrence: added -->
+        <div class="mb-4">
+          <label for="task-recurrence" class="block text-sm font-medium mb-1">Recurrence</label>
+          <select id="task-recurrence" class="w-full glass px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-400">
+            <option value="none">None</option>
+            <option value="daily">Daily</option>
+            <option value="weekly">Weekly</option>
+            <option value="monthly">Monthly</option>
+          </select>
+        </div>
+
         <div class="flex justify-end space-x-3">
           <button type="button" id="cancel-task-btn" class="px-4 py-2 rounded-lg hover:bg-gray-800/50">Cancel</button>
           <button type="submit" class="bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white font-medium py-2 px-6 rounded-lg">Save</button>
@@ -260,6 +267,10 @@
               <div class="w-11 h-6 bg-gray-700 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cyan-500"></div>
             </label>
           </div>
+          <div class="flex items-center justify-between mb-3">
+            <span>Reminder window (mins)</span>
+            <input id="reminder-window" type="number" min="1" max="1440" value="5" class="w-20 ml-2 glass px-3 py-1 rounded-lg" />
+          </div>
           <div class="flex items-center justify-between">
             <span>Completion Sounds</span>
             <label class="relative inline-flex items-center cursor-pointer">
@@ -278,6 +289,15 @@
             </label>
           </div>
         </div>
+
+        <!-- Import/Export added -->
+        <div>
+          <h4 class="text-sm font-medium text-gray-400 mb-2">Data</h4>
+          <div class="flex items-center gap-2">
+            <button id="export-btn" class="glass px-3 py-1 rounded-lg">Export JSON</button>
+            <input id="import-input" type="file" accept="application/json" class="glass px-2 py-1 rounded-lg" />
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -290,28 +310,13 @@
       lastDeleted: null,
     };
 
-    // Sample tasks (only used on first load)
-    const SAMPLE = [
-      { id: id(), title: 'Complete project proposal', notes: 'Finish the proposal for the new client project', priority: 'high', due: new Date(Date.now()).setHours(15,0,0,0), tags: ['Work','Urgent'], done: false, createdAt: Date.now() },
-      { id: id(), title: 'Grocery shopping', notes: 'Buy milk, eggs, bread, and vegetables', priority: 'medium', due: Date.now() + 24*3600*1000, tags: ['Personal'], done: false, createdAt: Date.now() },
-      { id: id(), title: 'Morning workout', notes: '30 minutes cardio + strength', priority: 'low', due: Date.now(), tags: ['Health'], done: true, doneAt: Date.now(), createdAt: Date.now() },
-      { id: id(), title: 'Read new JavaScript framework docs', notes: 'Check out the new features in the latest release', priority: 'none', due: null, tags: ['Learning'], done: false, createdAt: Date.now() },
-    ];
+    const STORAGE_KEY = 'To-Do-List_tasks_v2';
 
-    // ====== DOM ======
+    // ====== DOM helpers ======
     const $ = s => document.querySelector(s);
     const $$ = s => Array.from(document.querySelectorAll(s));
 
-    // Elements
-    const sidebarToggle = $('#sidebar-toggle');
-    const sidebar = $('#sidebar');
-    const sidebarOverlay = $('#sidebar-overlay');
-    const themeToggle = $('#theme-toggle');
-    const darkIcon = $('#dark-icon');
-    const lightIcon = $('#light-icon');
-    const settingsToggle = $('#settings-toggle');
-    const settingsModal = $('#settings-modal');
-    const closeSettings = $('#close-settings');
+    // Elements (many are already in the page)
     const addTaskBtn = $('#add-task-btn');
     const addTaskBtnTop = $('#add-task-btn-top');
     const addTaskSheet = $('#add-task-sheet');
@@ -333,25 +338,38 @@
     const remindersToggle = $('#reminders-toggle');
     const soundsToggle = $('#sounds-toggle');
     const confettiToggle = $('#confetti-toggle');
+    const reminderWindowInput = $('#reminder-window');
 
     // ====== Init ======
-    document.addEventListener('DOMContentLoaded', () => {
+    document.addEventListener('DOMContentLoaded', async () => {
       loadData();
       loadSettings();
       render();
-      if (particlesToggle?.checked) initParticles();
       wireEvents();
+      if (particlesToggle?.checked) initParticles();
+      startScheduler();               // start local scheduler
+      await registerServiceWorker();  // register sw.js (separate file)
     });
 
+    // ====== Storage ======
     function loadData(){
-      const saved = localStorage.getItem('To-Do-List_tasks');
-      state.tasks = saved ? revive(JSON.parse(saved)) : SAMPLE;
-      persist(); // ensure structure saved
+      const saved = localStorage.getItem(STORAGE_KEY);
+      state.tasks = saved ? revive(JSON.parse(saved)) : SAMPLE();
+      persist();
     }
-    function persist(){ localStorage.setItem('To-Do-List_tasks', JSON.stringify(state.tasks)); }
+    function persist(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(state.tasks)); }
 
     function revive(rows){
       return rows.map(t => ({ ...t, due: t.due==null?null:+t.due }));
+    }
+
+    function SAMPLE(){
+      return [
+        { id: id(), title: 'Complete project proposal', notes: 'Finish the proposal for the new client project', priority: 'high', due: new Date(Date.now()).setHours(15,0,0,0), tags: ['Work','Urgent'], done: false, createdAt: Date.now(), recurrence: 'none', notifiedAt: null },
+        { id: id(), title: 'Grocery shopping', notes: 'Buy milk, eggs, bread, and vegetables', priority: 'medium', due: Date.now() + 24*3600*1000, tags: ['Personal'], done: false, createdAt: Date.now(), recurrence: 'none', notifiedAt: null },
+        { id: id(), title: 'Morning workout', notes: '30 minutes cardio + strength', priority: 'low', due: Date.now(), tags: ['Health'], done: true, doneAt: Date.now(), createdAt: Date.now(), recurrence: 'daily', notifiedAt: null },
+        { id: id(), title: 'Read new JavaScript framework docs', notes: 'Check out the new features in the latest release', priority: 'none', due: null, tags: ['Learning'], done: false, createdAt: Date.now(), recurrence: 'none', notifiedAt: null },
+      ];
     }
 
     // ====== Rendering ======
@@ -440,28 +458,25 @@
 
     // ====== Events ======
     function wireEvents(){
-      // Sidebar mobile
-//      sidebarToggle?.addEventListener('click', ()=>{ sidebar.classList.toggle('open'); sidebarOverlay.classList.toggle('open'); });
-//      sidebarOverlay?.addEventListener('click', ()=>{ sidebar.classList.remove('open'); sidebarOverlay.classList.remove('open'); });
-
       // Filters
-      $$('.filter-btn').forEach(btn=>btn.addEventListener('click', ()=>{ state.filter.type = btn.dataset.filter; render(); }));
-      $$('.tag-filter').forEach(btn=>btn.addEventListener('click', ()=>{ state.filter.tag = btn.dataset.tag; render(); }));
+      $$('.filter-btn').forEach(btn=>btn.addEventListener('click', (ev)=>{ state.filter.type = btn.dataset.filter; render(); }));
+      $$('.tag-filter').forEach(btn=>btn.addEventListener('click', (ev)=>{ state.filter.tag = btn.dataset.tag; render(); }));
 
       // Search
       searchInput.addEventListener('input', (e)=>{ state.filter.q = e.target.value; render(); });
 
       // Theme and settings
-      themeToggle.addEventListener('click', toggleTheme);
-      settingsToggle.addEventListener('click', ()=> settingsModal.classList.remove('hidden'));
-      closeSettings.addEventListener('click', ()=> settingsModal.classList.add('hidden'));
-
+      $('#settings-toggle').addEventListener('click', ()=> $('#settings-modal').classList.remove('hidden'));
+      $('#close-settings').addEventListener('click', ()=> $('#settings-modal').classList.add('hidden'));
       darkModeToggle.addEventListener('change', ()=> setDark(darkModeToggle.checked));
       glassEffectToggle.addEventListener('change', toggleGlassEffect);
       particlesToggle.addEventListener('change', ()=> particlesToggle.checked ? initParticles() : (document.getElementById('particles-js').innerHTML=''));
+
+      // Settings toggles stored
       remindersToggle.addEventListener('change', ()=> localStorage.setItem('To-Do-List_reminders', remindersToggle.checked));
       soundsToggle.addEventListener('change', ()=> localStorage.setItem('To-Do-List_sounds', soundsToggle.checked));
       confettiToggle.addEventListener('change', ()=> localStorage.setItem('To-Do-List_confetti', confettiToggle.checked));
+      reminderWindowInput.addEventListener('change', ()=> localStorage.setItem('To-Do-List_reminder_window', reminderWindowInput.value));
 
       // Add / Edit
       const openSheet = ()=>{ addTaskSheet.classList.remove('hidden'); };
@@ -482,9 +497,9 @@
         if (idInput) {
           // edit
           const idx = state.tasks.findIndex(x=>x.id===idInput);
-          if (idx>-1) state.tasks[idx] = { ...state.tasks[idx], ...t };
+          if (idx>-1) state.tasks[idx] = { ...state.tasks[idx], ...t, notifiedAt: null };
         } else {
-          state.tasks.unshift({ ...t, id:id(), createdAt: Date.now(), done:false });
+          state.tasks.unshift({ ...t, id:id(), createdAt: Date.now(), done:false, notifiedAt: null });
         }
         persist();
         render();
@@ -498,9 +513,18 @@
           const id = e.target.closest('.task-card').dataset.id;
           const task = state.tasks.find(t=>t.id===id);
           if (!task) return;
-          task.done = e.target.checked;
-          task.doneAt = task.done ? Date.now() : null;
+          const checked = e.target.checked;
+          task.done = checked;
+          task.doneAt = checked ? Date.now() : null;
           persist();
+
+          // If task completed and recurring, create next occurrence
+          if (checked && task.recurrence && task.recurrence!=='none' && task.due){
+            const next = nextRecurrence(+task.due, task.recurrence);
+            state.tasks.unshift({ ...task, id:id(), due: next, done:false, createdAt: Date.now(), notifiedAt: null });
+            persist();
+          }
+
           if (task.done && confettiToggle.checked) createConfetti(e.target);
           if (task.done && soundsToggle.checked) beep();
           render();
@@ -519,6 +543,28 @@
       undoBtn.addEventListener('click', ()=>{
         if (state.lastDeleted){ state.tasks.unshift(state.lastDeleted); state.lastDeleted=null; persist(); render(); hideSnackbar(); }
       });
+
+      // Export / Import
+      $('#export-btn')?.addEventListener('click', () => {
+        const data = JSON.stringify(state.tasks, null, 2);
+        const blob = new Blob([data], {type:'application/json'});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a'); a.href = url; a.download = 'tasks.json'; a.click();
+        URL.revokeObjectURL(url);
+      });
+      $('#import-input')?.addEventListener('change', (e) => {
+        const f = e.target.files[0]; if(!f) return;
+        const r = new FileReader(); r.onload = () => {
+          try {
+            const arr = JSON.parse(r.result);
+            if (!Array.isArray(arr)) throw new Error('invalid');
+            // simple merge: append items (you could add dedupe logic)
+            state.tasks = arr.concat(state.tasks);
+            persist(); render(); showSnackbar('Imported tasks');
+          } catch (err) { showSnackbar('Invalid JSON file'); }
+        };
+        r.readAsText(f);
+      });
     }
 
     // ====== Quick Menu (Edit/Delete) ======
@@ -534,6 +580,7 @@
         $('#task-notes').value = t.notes||'';
         $('#task-priority').value = t.priority||'none';
         $('#task-due').value = t.due ? new Date(+t.due).toISOString().slice(0,16) : '';
+        $('#task-recurrence').value = t.recurrence || 'none';
         // tags
         $$('#tag-chooser .tag').forEach(btn=>{ const tag = btn.textContent.trim(); btn.classList.toggle('selected', (t.tags||[]).includes(tag)); });
         addTaskSheet.classList.remove('hidden');
@@ -563,7 +610,8 @@
     function collectForm(){
       const tags = $$('#tag-chooser .tag.selected').map(b=>b.textContent.trim());
       const dueVal = $('#task-due').value ? new Date($('#task-due').value).getTime() : null;
-      return { title: $('#task-title').value.trim(), notes: $('#task-notes').value.trim(), priority: $('#task-priority').value, due: dueVal, tags };
+      const recurrence = $('#task-recurrence').value || 'none';
+      return { title: $('#task-title').value.trim(), notes: $('#task-notes').value.trim(), priority: $('#task-priority').value, due: dueVal, tags, recurrence };
     }
 
     // ====== Stats ======
@@ -591,40 +639,42 @@
     // ====== Settings / Theme ======
     function loadSettings(){
       const theme = localStorage.getItem('To-Do-List_theme');
-  if (theme === 'light') setDark(false);
-  else setDark(true); // default dark
+      if (theme === 'light') setDark(false);
+      else setDark(true); // default dark
       const glass = localStorage.getItem('To-Do-List_glass');
       const parts = localStorage.getItem('To-Do-List_particles');
       const remind = localStorage.getItem('To-Do-List_reminders');
       const sound = localStorage.getItem('To-Do-List_sounds');
       const conf = localStorage.getItem('To-Do-List_confetti');
+      const windowVal = localStorage.getItem('To-Do-List_reminder_window');
 
-      if (theme==='light') setDark(false); else setDark(true);
       if (glass==='false') glassEffectToggle.checked=false, toggleGlassEffect();
       if (parts==='false') particlesToggle.checked=false;
       remindersToggle.checked = remind !== 'false';
       soundsToggle.checked = sound !== 'false';
       confettiToggle.checked = conf !== 'false';
+      if (windowVal) reminderWindowInput.value = windowVal;
     }
 
     function toggleTheme(){ setDark(!document.documentElement.classList.contains('dark')); }
     function setDark(on) {
-  const html = document.documentElement;
-  if (on) {
-    html.classList.add('dark');
-    darkIcon.classList.add('hidden');
-    lightIcon.classList.remove('hidden');
-    localStorage.setItem('To-Do-List_theme', 'dark');
-    darkModeToggle.checked = true;
-  } else {
-    html.classList.remove('dark');
-    darkIcon.classList.remove('hidden');
-    lightIcon.classList.add('hidden');
-    localStorage.setItem('To-Do-List_theme', 'light');
-    darkModeToggle.checked = false;
-  }
-}
-
+      const html = document.documentElement;
+      const darkIcon = $('#dark-icon');
+      const lightIcon = $('#light-icon');
+      if (on) {
+        html.classList.add('dark');
+        darkIcon.classList.add('hidden');
+        lightIcon.classList.remove('hidden');
+        localStorage.setItem('To-Do-List_theme', 'dark');
+        darkModeToggle.checked = true;
+      } else {
+        html.classList.remove('dark');
+        darkIcon.classList.remove('hidden');
+        lightIcon.classList.add('hidden');
+        localStorage.setItem('To-Do-List_theme', 'light');
+        darkModeToggle.checked = false;
+      }
+    }
 
     function toggleGlassEffect(){
       const els = $$('.glass');
@@ -677,22 +727,187 @@
       } catch(e) {}
     }
 
-    // ====== Utils ======
+    // ====== Notifications & Scheduler ======
+    let schedulerInterval = null;
+
+    function startScheduler(){
+      if (schedulerInterval) clearInterval(schedulerInterval);
+      // check immediately, then every 30 seconds
+      checkReminders();
+      schedulerInterval = setInterval(checkReminders, 30*1000);
+      // also reschedule missed recurrings (if any)
+      rescheduleMissedRecurring();
+    }
+
+    async function ensureNotificationPermission(){
+      if (!('Notification' in window)) return false;
+      if (Notification.permission === 'granted') return true;
+      try {
+        const res = await Notification.requestPermission();
+        return res === 'granted';
+      } catch (e) { return false; }
+    }
+
+    async function checkReminders(){
+      try {
+        const remindOn = remindersToggle.checked;
+        if (!remindOn) return;
+        const winMin = Math.max(1, parseInt(reminderWindowInput.value || '5', 10));
+        const now = Date.now();
+        const windowMs = winMin * 60 * 1000;
+
+        // find tasks due within next window or overdue, not done, and not recently notified
+        const candidates = state.tasks.filter(t =>
+          t.due && !t.done && (+t.due <= now + windowMs) && (!t.notifiedAt || (now - t.notifiedAt) > 60*1000)
+        );
+
+        if (candidates.length === 0) return;
+
+        const permission = await ensureNotificationPermission();
+        candidates.forEach(t => sendNotification(t, permission));
+      } catch (e) {
+        console.error('checkReminders error', e);
+      }
+    }
+
+    async function sendNotification(task, permissionGranted){
+      try {
+        task.notifiedAt = Date.now();
+        persist();
+        const title = `Reminder: ${task.title}`;
+        const body = task.notes || formatDue(task) || '';
+        const tag = `task-${task.id}`;
+
+        // sound
+        if (soundsToggle.checked) playBeepShort();
+
+        // Use service worker to show notification with actions (if registered)
+        if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+          const reg = await navigator.serviceWorker.getRegistration();
+          if (reg) {
+            // Notification actions: markdone, snooze
+            reg.showNotification(title, {
+              body,
+              tag,
+              renotify: true,
+              data: { taskId: task.id },
+              actions: [
+                { action: 'markdone', title: 'Mark Done' },
+                { action: 'snooze', title: 'Snooze 5m' }
+              ]
+            });
+            return;
+          }
+        }
+
+        // fallback to in-page Notification
+        if (permissionGranted) {
+          const n = new Notification(title, { body, tag, data: { taskId: task.id } });
+          n.onclick = (ev) => { window.focus(); };
+        }
+      } catch (e) {
+        console.error('sendNotification err', e);
+      }
+    }
+
+    function playBeepShort(){
+      try {
+        const ctx = new (window.AudioContext||window.webkitAudioContext)();
+        const o = ctx.createOscillator(); const g = ctx.createGain();
+        o.type='sine'; o.frequency.value = 880; g.gain.value = 0.03; o.connect(g); g.connect(ctx.destination); o.start();
+        setTimeout(()=>{ o.stop(); ctx.close(); }, 100);
+      } catch(e){}
+    }
+
+    // service worker registration (expects sw.js in same folder)
+    async function registerServiceWorker(){
+      if (!('serviceWorker' in navigator)) return;
+      try {
+        const registration = await navigator.serviceWorker.register('/sw.js');
+        console.log('Service Worker registered:', registration);
+        // Listen to messages from SW
+        navigator.serviceWorker.addEventListener('message', (ev) => {
+          const m = ev.data;
+          if (!m || !m.type) return;
+          if (m.type === 'markdone' && m.taskId) { markTaskDoneById(m.taskId); }
+          if (m.type === 'snooze' && m.taskId) { snoozeTaskById(m.taskId, 5); } // default snooze 5 minutes
+        });
+      } catch (e) {
+        console.warn('SW register failed:', e);
+      }
+    }
+
+    // called from SW message
+    function markTaskDoneById(id){
+      const t = state.tasks.find(x => x.id === id);
+      if (!t) return;
+      t.done = true;
+      t.doneAt = Date.now();
+      // create next occurrence if recurring
+      if (t.recurrence && t.recurrence!=='none' && t.due){
+        const next = nextRecurrence(+t.due, t.recurrence);
+        state.tasks.unshift({ ...t, id: id(), due: next, done: false, createdAt: Date.now(), notifiedAt: null });
+      }
+      persist(); render(); showSnackbar('Marked done from notification');
+    }
+
+    function snoozeTaskById(id, minutes){
+      const t = state.tasks.find(x => x.id === id);
+      if (!t) return;
+      const m = Math.max(1, minutes||5);
+      if (t.due) t.due = +t.due + m*60*1000;
+      // reset notifiedAt so it can be notified again
+      t.notifiedAt = null;
+      persist(); render(); showSnackbar(`Snoozed ${m} minutes`);
+    }
+
+    // Reschedule missed recurrings (if completed while offline)
+    function rescheduleMissedRecurring(){
+      const now = Date.now();
+      state.tasks.forEach(t => {
+        if (t.recurrence && t.recurrence!=='none' && t.due && t.done) {
+          // ensure a future occurrence exists
+          const hasFuture = state.tasks.some(x => x.title === t.title && x.due && x.due > t.due);
+          if (!hasFuture) {
+            const next = nextRecurrence(+t.due, t.recurrence);
+            state.tasks.push({ ...t, id: id(), due: next, done: false, createdAt: Date.now(), notifiedAt: null });
+          }
+        }
+      });
+      persist();
+    }
+
+    // ===== Service worker action fallback (page-focus + postMessage) =====
+    // When the SW handles notificationclick it will postMessage to clients. We listen above.
+
+    // ====== Utils for Recurrence, ID, etc. ======
     function id(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,8); }
     function escapeHtml(s=''){ return s.replace(/[&<>"']/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;' }[c])); }
+    function nextRecurrence(dueTs, rule){
+      const d = new Date(dueTs);
+      if (rule === 'daily') d.setDate(d.getDate()+1);
+      else if (rule === 'weekly') d.setDate(d.getDate()+7);
+      else if (rule === 'monthly') d.setMonth(d.getMonth()+1);
+      return d.getTime();
+    }
+
   </script>
-      <p class="copyright">Copyright &copy; 2025 To_Do_List By Nitesh. All rights reserved.</p>
-      <style>
+
+  <script>
+    /* COPYRIGHT */
+    document.write('<p class=\"copyright\">Copyright &copy; 2025 To_Do_List By Nitesh. All rights reserved.</p>');
+  </script>
+
+  <style>
   .copyright {
     position: fixed;
     bottom: 5px;     /* distance from bottom */
     right: 10px;      /* distance from right */
     font-size: 10px;
-    color: #666;
-    color: rgba(255,255,255,0.6); /* soft gray-white */
-    z-index: 50;    /* stays above background */
+    color: rgba(255,255,255,0.6);
+    z-index: 50;
   }
 </style>
+
 </body>
 </html>
-
